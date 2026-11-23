@@ -40,7 +40,7 @@ from lightwam.datasets.lerobot.processors.lightwam_processor import LightWAMProc
 from lightwam.datasets.dataset_utils import ResizeSmallestSideAspectPreserving, CenterCrop, Normalize
 from lightwam.datasets.lerobot.utils.normalizer import load_dataset_stats_from_json
 from lightwam.utils.config_compat import load_compatible_omegaconf
-from lightwam.utils.pytorch_utils import set_global_seed
+from lightwam.utils.pytorch_utils import device_backend, get_default_device, set_global_seed, synchronize_device
 from lightwam.datasets.lerobot.robot_video_dataset import DEFAULT_PROMPT
 from libero.libero import benchmark
 
@@ -82,15 +82,7 @@ def _mixed_precision_to_model_dtype(mixed_precision: str) -> torch.dtype:
 
 
 def _sync_eval_cuda(device: str) -> None:
-    if not torch.cuda.is_available():
-        return
-    device_str = str(device)
-    if not device_str.startswith("cuda"):
-        return
-    if device_str == "cuda":
-        torch.cuda.synchronize()
-    else:
-        torch.cuda.synchronize(device=torch.device(device_str))
+    synchronize_device(device)
 
 
 def _maybe_preencode_task_prompt_context(
@@ -117,8 +109,9 @@ def _maybe_preencode_task_prompt_context(
 
     text_encoder.to("cpu")
     _sync_eval_cuda(model_device)
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    backend = device_backend(model_device)
+    if backend is not None:
+        backend.empty_cache()
     logging.info(
         "Pre-encoded task prompt context once and offloaded text encoder to CPU for rollout: task=%s",
         task_description,
@@ -130,7 +123,7 @@ def _resolve_eval_device(cfg: DictConfig) -> str:
     eval_device = cfg.EVALUATION.get("device")
     if eval_device is not None:
         return str(eval_device)
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    return str(get_default_device())
 
 
 def _resolve_dataset_stats_path(cfg: DictConfig) -> Path:
@@ -899,6 +892,7 @@ def eval_single_process(cfg: DictConfig):
     model = instantiate(cfg.model, model_dtype=model_dtype, device=model_device)
     _load_model_checkpoint(model, str(cfg.ckpt))
     model = model.to(model_device).eval()
+    logging.info("Evaluating on device: %s (first parameter on %s)", model_device, next(model.parameters()).device)
 
     dataset_stats_path = _resolve_dataset_stats_path(cfg)
     dataset_stats = load_dataset_stats_from_json(str(dataset_stats_path))
