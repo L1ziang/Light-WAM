@@ -46,7 +46,7 @@ EVALUATION:
 
   # Optional external inputs
   dataset_stats_path: null
-  device: cuda
+  device: null  # null picks cuda, then xpu, then cpu
 
 MULTIRUN:
   create_only: false

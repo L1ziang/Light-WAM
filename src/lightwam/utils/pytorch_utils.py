@@ -8,6 +8,31 @@ import torch.distributed as dist
 import numpy as np
 
 
+def get_default_device() -> torch.device:
+    """CUDA when available, else Intel XPU when available, else CPU."""
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if hasattr(torch, "xpu") and torch.xpu.is_available():
+        return torch.device("xpu")
+    return torch.device("cpu")
+
+
+def device_backend(device) -> Optional[object]:
+    """The torch module that owns `device` (torch.cuda or torch.xpu), or None for CPU."""
+    device_type = torch.device(device).type
+    if device_type == "cuda" and torch.cuda.is_available():
+        return torch.cuda
+    if device_type == "xpu" and hasattr(torch, "xpu") and torch.xpu.is_available():
+        return torch.xpu
+    return None
+
+
+def synchronize_device(device) -> None:
+    backend = device_backend(device)
+    if backend is not None:
+        backend.synchronize(torch.device(device))
+
+
 def _resolve_global_rank() -> int:
     if torch.distributed.is_available() and torch.distributed.is_initialized():
         return int(torch.distributed.get_rank())
@@ -30,6 +55,8 @@ def set_global_seed(seed: int, get_worker_init_fn: bool = False) -> Optional[Cal
     torch.manual_seed(process_seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(process_seed)
+    if hasattr(torch, "xpu") and torch.xpu.is_available():
+        torch.xpu.manual_seed_all(process_seed)
 
     return worker_init_function if get_worker_init_fn else None
 

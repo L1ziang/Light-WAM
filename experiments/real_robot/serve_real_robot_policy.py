@@ -31,6 +31,7 @@ from lightwam.datasets.lerobot.processors.lightwam_processor import LightWAMProc
 from lightwam.datasets.lerobot.robot_video_dataset import DEFAULT_PROMPT
 from lightwam.datasets.lerobot.utils.normalizer import load_dataset_stats_from_json
 from lightwam.utils.config_compat import load_compatible_omegaconf
+from lightwam.utils.pytorch_utils import get_default_device
 
 
 logging.basicConfig(
@@ -242,7 +243,7 @@ def _mixed_precision_to_model_dtype(mixed_precision: str) -> torch.dtype:
 
 def _resolve_device(device: Optional[str]) -> str:
     if _is_none_like(device):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = str(get_default_device())
     device = str(device)
     if device.startswith("cuda") and not torch.cuda.is_available():
         logger.warning("CUDA is unavailable, falling back to cpu.")

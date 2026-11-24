@@ -40,7 +40,7 @@ from lightwam.datasets.lerobot.processors.lightwam_processor import LightWAMProc
 from lightwam.datasets.dataset_utils import ResizeSmallestSideAspectPreserving, CenterCrop, Normalize
 from lightwam.datasets.lerobot.utils.normalizer import load_dataset_stats_from_json
 from lightwam.utils.config_compat import load_compatible_omegaconf
-from lightwam.utils.pytorch_utils import set_global_seed
+from lightwam.utils.pytorch_utils import device_backend, get_default_device, set_global_seed, synchronize_device
 from lightwam.datasets.lerobot.robot_video_dataset import DEFAULT_PROMPT
 from libero.libero import benchmark
 
@@ -81,18 +81,6 @@ def _mixed_precision_to_model_dtype(mixed_precision: str) -> torch.dtype:
     return torch.bfloat16
 
 
-def _sync_eval_cuda(device: str) -> None:
-    if not torch.cuda.is_available():
-        return
-    device_str = str(device)
-    if not device_str.startswith("cuda"):
-        return
-    if device_str == "cuda":
-        torch.cuda.synchronize()
-    else:
-        torch.cuda.synchronize(device=torch.device(device_str))
-
-
 def _maybe_preencode_task_prompt_context(
     task_description: str,
     model: torch.nn.Module,
@@ -116,9 +104,10 @@ def _maybe_preencode_task_prompt_context(
     cached_context_mask = context_mask.detach().to(device="cpu")
 
     text_encoder.to("cpu")
-    _sync_eval_cuda(model_device)
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    synchronize_device(model_device)
+    backend = device_backend(model_device)
+    if backend is not None:
+        backend.empty_cache()
     logging.info(
         "Pre-encoded task prompt context once and offloaded text encoder to CPU for rollout: task=%s",
         task_description,
@@ -130,7 +119,7 @@ def _resolve_eval_device(cfg: DictConfig) -> str:
     eval_device = cfg.EVALUATION.get("device")
     if eval_device is not None:
         return str(eval_device)
-    return "cuda" if torch.cuda.is_available() else "cpu"
+    return str(get_default_device())
 
 
 def _resolve_dataset_stats_path(cfg: DictConfig) -> Path:
@@ -578,7 +567,7 @@ def _predict_action_chunk(
 
     with torch.no_grad():
         if print_action_latency and print_action_latency_sync_cuda:
-            _sync_eval_cuda(model_device)
+            synchronize_device(model_device)
         infer_start = time.perf_counter()
         if visualize_future_video:
             pred = model.infer_joint(**infer_kwargs)
@@ -586,7 +575,7 @@ def _predict_action_chunk(
         else:
             pred = model.infer_action(**infer_kwargs)
         if print_action_latency and print_action_latency_sync_cuda:
-            _sync_eval_cuda(model_device)
+            synchronize_device(model_device)
         infer_latency_ms = (time.perf_counter() - infer_start) * 1000.0
     if print_action_latency and infer_latency_ms is not None:
         context_prefix = "" if latency_log_context is None else f"{latency_log_context} "
@@ -899,6 +888,7 @@ def eval_single_process(cfg: DictConfig):
     model = instantiate(cfg.model, model_dtype=model_dtype, device=model_device)
     _load_model_checkpoint(model, str(cfg.ckpt))
     model = model.to(model_device).eval()
+    logging.info("Evaluating on device: %s (first parameter on %s)", model_device, next(model.parameters()).device)
 
     dataset_stats_path = _resolve_dataset_stats_path(cfg)
     dataset_stats = load_dataset_stats_from_json(str(dataset_stats_path))

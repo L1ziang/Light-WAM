@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from PIL import Image
 
 from lightwam.utils.logging_config import get_logger
+from lightwam.utils.pytorch_utils import synchronize_device
 
 from .action_dit import ActionDiT
 from .helpers.loader import (
@@ -429,12 +430,8 @@ class LightWAM(torch.nn.Module):
     def _timing_sync(self):
         if not self.enable_timing_breakdown:
             return
-        if (
-            self.timing_breakdown_sync_cuda
-            and self.device.type == "cuda"
-            and torch.cuda.is_available()
-        ):
-            torch.cuda.synchronize(self.device)
+        if self.timing_breakdown_sync_cuda:
+            synchronize_device(self.device)
 
     def _timing_start(self) -> Optional[float]:
         if not self.enable_timing_breakdown:
@@ -459,8 +456,7 @@ class LightWAM(torch.nn.Module):
         }
 
     def _benchmark_sync_device(self) -> None:
-        if self.device.type == "cuda" and torch.cuda.is_available():
-            torch.cuda.synchronize(self.device)
+        synchronize_device(self.device)
 
     def _prepare_infer_action_context(
         self,

@@ -42,6 +42,30 @@ pip install torch==2.7.1+cu128 torchvision==0.22.1+cu128 --extra-index-url https
 pip install -e .
 ```
 
+### Run on Intel GPU (XPU)
+
+Evaluation runs on an Intel GPU through PyTorch XPU. The project pins a CUDA build of torch, so install the XPU build first and then the project without its pinned dependencies:
+
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/xpu
+pip install -e . --no-deps
+pip install -r requirements-xpu.txt
+```
+
+For the LIBERO evaluation, also install the simulator packages. The official LIBERO package is cloned separately, as described under Evaluation:
+
+```bash
+pip install -r requirements-xpu-libero.txt
+```
+
+Evaluate with the device left on automatic (CUDA first, then XPU, then CPU) or name it:
+
+```bash
+CKPT=/path/to/checkpoints/weights/xxxx.pt bash scripts/eval_libero.sh EVALUATION.device=xpu
+```
+
+Training, the precompute scripts and the RoboTwin2.0 evaluation are unchanged and stay CUDA-only.
+
 #### FFmpeg Libraries for Precompute
 
 ```bash
