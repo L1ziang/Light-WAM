@@ -1,0 +1,19 @@
+# Simulator packages for the LIBERO evaluation on Intel GPU (XPU), without the CUDA packages of
+# scripts/libero_env.full.yml. Install requirements-xpu.txt first, and clone the official LIBERO
+# package as described under Evaluation. Versions are the ones pinned in scripts/libero_env.full.yml;
+# matplotlib is not listed there but LIBERO imports it.
+absl-py==2.4.0
+bddl==1.0.1
+cloudpickle==2.1.0
+easydict==1.9
+etils[epath]==1.13.0
+future==0.18.2
+gym==0.25.2
+llvmlite==0.47.0
+matplotlib==3.9.4
+mujoco==3.3.2
+numba==0.65.0
+numpy==1.26.4
+opencv-python==4.6.0.66
+robosuite==1.4.0
+scipy==1.13.1

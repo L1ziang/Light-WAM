@@ -52,6 +52,12 @@ pip install -e . --no-deps
 pip install -r requirements-xpu.txt
 ```
 
+For the LIBERO evaluation, also install the simulator packages. The official LIBERO package is cloned separately, as described under Evaluation:
+
+```bash
+pip install -r requirements-xpu-libero.txt
+```
+
 Evaluate with the device left on automatic (CUDA first, then XPU, then CPU) or name it:
 
 ```bash

@@ -1,6 +1,7 @@
 # Inference dependencies for Intel GPU (XPU).
-# This is the dependency list of pyproject.toml without torch, torchvision, torchcodec (installed from the
-# PyTorch XPU index or not needed for inference) and the training-only packages deepspeed and wandb.
+# This is the dependency list of pyproject.toml without torch, torchvision and torchcodec (torch comes
+# from the PyTorch XPU index, torchcodec is not needed for inference) and without the training-only
+# packages deepspeed and wandb.
 accelerate==1.12.0
 av==16.0.1
 boto3==1.35.99
@@ -30,19 +31,3 @@ tqdm==4.66.5
 transformers==4.49.0
 typing-extensions==4.15.0
 websockets==16.0
-
-# LIBERO evaluation (the official LIBERO package is still cloned separately, see Evaluation)
-absl-py
-etils[epath]
-bddl==1.0.1
-cloudpickle==2.1.0
-easydict==1.9
-future
-gym==0.25.2
-matplotlib
-mujoco==3.3.2
-numba==0.61.2
-llvmlite==0.44.0
-opencv-python==4.6.0.66
-robosuite==1.4.0
-scipy==1.13.1

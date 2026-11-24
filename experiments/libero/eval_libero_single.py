@@ -81,10 +81,6 @@ def _mixed_precision_to_model_dtype(mixed_precision: str) -> torch.dtype:
     return torch.bfloat16
 
 
-def _sync_eval_cuda(device: str) -> None:
-    synchronize_device(device)
-
-
 def _maybe_preencode_task_prompt_context(
     task_description: str,
     model: torch.nn.Module,
@@ -108,7 +104,7 @@ def _maybe_preencode_task_prompt_context(
     cached_context_mask = context_mask.detach().to(device="cpu")
 
     text_encoder.to("cpu")
-    _sync_eval_cuda(model_device)
+    synchronize_device(model_device)
     backend = device_backend(model_device)
     if backend is not None:
         backend.empty_cache()
@@ -571,7 +567,7 @@ def _predict_action_chunk(
 
     with torch.no_grad():
         if print_action_latency and print_action_latency_sync_cuda:
-            _sync_eval_cuda(model_device)
+            synchronize_device(model_device)
         infer_start = time.perf_counter()
         if visualize_future_video:
             pred = model.infer_joint(**infer_kwargs)
@@ -579,7 +575,7 @@ def _predict_action_chunk(
         else:
             pred = model.infer_action(**infer_kwargs)
         if print_action_latency and print_action_latency_sync_cuda:
-            _sync_eval_cuda(model_device)
+            synchronize_device(model_device)
         infer_latency_ms = (time.perf_counter() - infer_start) * 1000.0
     if print_action_latency and infer_latency_ms is not None:
         context_prefix = "" if latency_log_context is None else f"{latency_log_context} "
